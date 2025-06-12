@@ -44,27 +44,6 @@ A comprehensive data pipeline for processing and analyzing NBA player prop bets.
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **image_processor.py**: 
-    - Writes to `raw_ocr_bets`
-    - References `players`
-2. **review_handler.py**: 
-    - Reads from `raw_ocr_bets` where `needs_review = 1`
-    - References `players`
-    - Updates `raw_ocr_bets.needs_review = 0` 
-    - Updates `raw_ocr_bets.is_voided = 1` if bet is deleted in manual review
-3.  **process_bets.py**: 
-    - Reads `raw_ocr_bets` where `is_processed = 0`, `is_voided = 0` and `needs_review = 0`
-    - Reads from `game_stats` and `unplayed_bets` to check for cached data and eliminate redundant API calls
-    - References `players`
-    - Writes to `unplayed_bets` if player has no stats
-    - Writes to `game_stats` and `bet_results` if player has stats
-    - Updates `raw_ocr_bets.is_processed = 1`
-4. **upload_bets.py**: 
-    - Reads `bet_results` where `is_uploaded = 0`
-    - References `players`
-    - Writes to `aggregated_results`
-    - Updates `bet_results.is_uploaded = 1`
-
 ## Data Flow
 
 1. Betting slip images → OCR extraction → Raw bet data
@@ -72,11 +51,18 @@ A comprehensive data pipeline for processing and analyzing NBA player prop bets.
 3. Processing queue → NBA API lookup → Game statistics → Bet outcomes
 4. Bet outcomes → Aggregation → Performance analysis → Google Sheets
 
-## Some Challenges
+## Why?
 
-- Some of the images are quite messy, with cursors, text highlighting, screenshot sizing, etc. throwing off OCR. Considering this is financial data, validation is the single most important part of this project. I designed a flagging system which exports suspect entries to a CSV and their corresponding screenshots to a folder. This allows for easy manual data entry, where I can fill in whatever OCR misread and re-run the script to update the database with my changes. 
+Prior to this workflow, bets in the images had to be manually researched and entered to a Google Sheet that only stored aggregated results and volume of each bet type and score. This process took around 50 seconds per entry, was prone to manual entry errors, and had extremely one-dimensional analysis. I built this pipeline to improve efficiency, scale the project to handle every bet possible, and properly analyze results to improve ROI.  
 
-- The images include anywhere from 2 to 20 bets with only those greater than a 20% 'score' being relevant. I couldn't simply use regex to find all odds or betting lines because it would include odds/lines with an associated score < 20. I worked around this by applying regex sequentially, first extracting full bet strings related to a 20%+ score, then extracting detailed information from that string.
+## Results 
+(specific results and strategy not included)
+
+Key results were derived from plots showing Cumulative ROI vs. Number of Bets for each bet type (e.g. Points, Assists) and 'score' range (custom edge metric). These plots allowed us to examine trends and variability in our results, as well as relationships between bet types and score. I presented these plots with simple rule recommendations for future bets: A. ignore one of the 11 bet types as it's extremely variable with low ROI. B. Slightly raise the minimum score range for 3 of the 10 other bet types as they're losing money at low score ranges but profitable above that. 
+
+These rules would filter out only 30% of the investments and increase ROI% by 2.8 and raw profit by 26.4%. 
+
+Note these are simple rules made with careful consideration of overfitting on past results, understanding that anyone can look at past investments and make "rules" with insane profit. My rules were derived primarily from domain knowledge of basketball and our "score" metric, with a sample size strong enough to support them early in the season.
 
 
 ## TODO
@@ -86,3 +72,4 @@ This project isn't being updated as the NBA regular season ended and it won't be
 2. Remove redundancies (e.g. validation; main; logging; imports; image_processor.process_folder return type)
 3. Extract database and player table initialization from image_processor.py
 4. Move upload_bets.py to it's own src folder
+5. Add visualizations to GitHub (filtering out sensitive data)
